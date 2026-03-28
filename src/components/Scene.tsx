@@ -4,10 +4,11 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { Suspense } from "react";
 import FlowerGlobe from "./FlowerGlobe";
+import GlobeGlow from "./GlobeGlow";
 import { FlowerGenerationParams } from "@/types/flowers";
 
 interface SceneProps {
-  params: FlowerGenerationParams;
+  params: FlowerGenerationParams | null;
 }
 
 export default function Scene({ params }: SceneProps) {
@@ -28,7 +29,11 @@ export default function Scene({ params }: SceneProps) {
       />
 
       <Suspense fallback={null}>
-        <FlowerGlobe params={params} />
+        {params ? (
+          <FlowerGlobe params={params} />
+        ) : (
+          <GlobeGlow radius={2.15} intensity={0.6} color="#D4A060" />
+        )}
       </Suspense>
 
       <OrbitControls

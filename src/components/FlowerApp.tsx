@@ -15,7 +15,7 @@ import {
 const Scene = dynamic(() => import("./Scene"), { ssr: false });
 
 export default function FlowerApp() {
-  const [params, setParams] = useState<FlowerGenerationParams>(DEFAULT_PARAMS);
+  const [params, setParams] = useState<FlowerGenerationParams | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPrompt, setCurrentPrompt] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -43,7 +43,7 @@ export default function FlowerApp() {
 
       if (!res.ok) throw new Error("Generation failed");
 
-      const data = await res.json() as FlowerGenerationParams;
+      const data = (await res.json()) as FlowerGenerationParams;
       setParams(data);
       saveToHistory(prompt, data);
       setHistory(getHistory());
@@ -54,7 +54,10 @@ export default function FlowerApp() {
       window.history.replaceState({}, "", url.toString());
     } catch (err) {
       console.error("Generation error:", err);
-      setParams((prev) => ({ ...prev, seed: prev.seed + 1 }));
+      setParams((prev) => {
+        const base = prev ?? DEFAULT_PARAMS;
+        return { ...base, seed: base.seed + 1 };
+      });
     } finally {
       setIsLoading(false);
     }
@@ -87,7 +90,7 @@ export default function FlowerApp() {
         onGenerate={handleGenerate}
         isLoading={isLoading}
         currentPrompt={currentPrompt}
-        seed={params.seed}
+        seed={params?.seed ?? 0}
         onToggleHistory={() => setShowHistory(!showHistory)}
       />
 

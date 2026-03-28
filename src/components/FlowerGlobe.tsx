@@ -10,8 +10,9 @@ import { mulberry32 } from "@/lib/seededRng";
 import GlobeGlow from "./GlobeGlow";
 
 const GLOBE_RADIUS = 2;
-const FLOWER_COUNT = 2200;
+const FLOWER_COUNT = 1800;
 const BLOOM_SPEED = 0.6;
+const PLANE_ASPECT = 1.5;
 
 interface FlowerGlobeProps {
   params: FlowerGenerationParams;
@@ -21,7 +22,7 @@ function useFlowerTextures(params: FlowerGenerationParams) {
   const [textures, setTextures] = useState<THREE.CanvasTexture[]>([]);
 
   useEffect(() => {
-    const canvases = generateAllTextures(params.variations);
+    const canvases = generateAllTextures(params.variations, params.seed);
     const threeTextures = canvases.map((canvas) => {
       const tex = new THREE.CanvasTexture(canvas);
       tex.needsUpdate = true;
@@ -32,7 +33,7 @@ function useFlowerTextures(params: FlowerGenerationParams) {
     return () => {
       threeTextures.forEach((t) => t.dispose());
     };
-  }, [params.variations]);
+  }, [params.variations, params.seed]);
 
   return textures;
 }
@@ -89,11 +90,14 @@ interface VariationMeshProps {
 function VariationMesh({ flowers, texture, bloomRef }: VariationMeshProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const timeRef = useRef(0);
 
-  useFrame(({ camera }) => {
+  useFrame(({ camera }, delta) => {
     const mesh = meshRef.current;
     if (!mesh || flowers.length === 0) return;
 
+    timeRef.current += delta;
+    const time = timeRef.current;
     const bp = bloomRef.current ?? 2;
 
     for (let i = 0; i < flowers.length; i++) {
@@ -104,10 +108,19 @@ function VariationMesh({ flowers, texture, bloomRef }: VariationMeshProps) {
       const t = Math.max(0, Math.min(1, (bp - flowerDelay) / 0.4));
       const s = easeOutCubic(t);
 
-      dummy.position.set(...f.position);
+      const windPhase = i * 0.37 + f.position[0] * 2.1 + f.position[2] * 1.3;
+      const windStrength = 0.05 * s;
+      const swayX = Math.sin(time * 1.2 + windPhase) * windStrength;
+      const swayZ = Math.cos(time * 0.9 + windPhase * 0.7) * windStrength * 0.6;
+
+      dummy.position.set(
+        f.position[0] + swayX,
+        f.position[1],
+        f.position[2] + swayZ
+      );
       dummy.quaternion.copy(camera.quaternion);
       dummy.rotateZ(f.rotationZ);
-      dummy.scale.setScalar(f.scale * s);
+      dummy.scale.set(f.scale * s, f.scale * s * PLANE_ASPECT, f.scale * s);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
     }
