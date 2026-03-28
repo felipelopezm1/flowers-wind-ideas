@@ -17,6 +17,11 @@ const PLANE_ASPECT = 1.5;
 const FLOWER_SCALE_MULT = 2.8;
 const GRASS_VARIANTS = 5;
 
+const FLY_POOL = 80;
+const FLY_TRIGGER_DIST = 5.5;
+const FLY_FULL_DIST = 2.5;
+const WIND_DIR = new THREE.Vector3(1, 0.35, 0.5).normalize();
+
 interface FlowerGlobeProps {
   params: FlowerGenerationParams;
 }
@@ -298,6 +303,151 @@ function GrassGroup({ grasses, texture, bloomRef }: GrassGroupProps) {
   );
 }
 
+interface FlyingPetal {
+  active: boolean;
+  pos: THREE.Vector3;
+  vel: THREE.Vector3;
+  life: number;
+  maxLife: number;
+  scale: number;
+  rot: number;
+  rotSpeed: number;
+  texIdx: number;
+}
+
+function makePetalPool(): FlyingPetal[] {
+  return Array.from({ length: FLY_POOL }, () => ({
+    active: false,
+    pos: new THREE.Vector3(),
+    vel: new THREE.Vector3(),
+    life: 0,
+    maxLife: 1,
+    scale: 0.3,
+    rot: 0,
+    rotSpeed: 0,
+    texIdx: 0,
+  }));
+}
+
+interface FlyingPetalsProps {
+  textures: THREE.CanvasTexture[];
+  flowers: FlowerInstance[];
+  bloomRef: React.RefObject<number>;
+}
+
+function FlyingPetals({ textures, flowers, bloomRef }: FlyingPetalsProps) {
+  const pool = useRef<FlyingPetal[]>(makePetalPool());
+  const meshRef = useRef<THREE.InstancedMesh>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const spawnTimer = useRef(0);
+  const rngRef = useRef(mulberry32(12345));
+
+  useFrame(({ camera }, delta) => {
+    const mesh = meshRef.current;
+    if (!mesh || textures.length === 0) return;
+    if ((bloomRef.current ?? 0) < 1.2) return;
+
+    const camDist = camera.position.length();
+    const closeness = Math.max(
+      0,
+      Math.min(1, (FLY_TRIGGER_DIST - camDist) / (FLY_TRIGGER_DIST - FLY_FULL_DIST))
+    );
+
+    const rng = rngRef.current;
+    const petals = pool.current;
+
+    if (closeness > 0) {
+      spawnTimer.current += delta;
+      const spawnInterval = 0.12 / (closeness * closeness + 0.1);
+
+      while (spawnTimer.current > spawnInterval) {
+        spawnTimer.current -= spawnInterval;
+
+        const inactive = petals.find((p) => !p.active);
+        if (!inactive) break;
+
+        const srcIdx = Math.floor(rng() * flowers.length);
+        const src = flowers[srcIdx];
+
+        inactive.active = true;
+        inactive.pos.set(src.position[0], src.position[1], src.position[2]);
+
+        const normal = inactive.pos.clone().normalize();
+        inactive.pos.addScaledVector(normal, 0.15);
+
+        const speed = 0.6 + rng() * 0.8;
+        inactive.vel
+          .copy(WIND_DIR)
+          .multiplyScalar(speed)
+          .addScaledVector(normal, 0.2 + rng() * 0.3);
+        inactive.vel.x += (rng() - 0.5) * 0.3;
+        inactive.vel.z += (rng() - 0.5) * 0.2;
+
+        inactive.life = 0;
+        inactive.maxLife = 3 + rng() * 4;
+        inactive.scale = 0.15 + rng() * 0.3;
+        inactive.rot = rng() * Math.PI * 2;
+        inactive.rotSpeed = (rng() - 0.5) * 3;
+        inactive.texIdx = src.variationIndex % textures.length;
+      }
+    }
+
+    for (let i = 0; i < FLY_POOL; i++) {
+      const p = petals[i];
+
+      if (p.active) {
+        p.life += delta;
+        if (p.life >= p.maxLife) {
+          p.active = false;
+        } else {
+          p.pos.addScaledVector(p.vel, delta);
+          p.vel.y += delta * 0.03;
+          p.vel.x += Math.sin(p.life * 2.5) * delta * 0.15;
+          p.rot += p.rotSpeed * delta;
+
+          const fadeIn = Math.min(1, p.life / 0.3);
+          const fadeOut = Math.max(0, 1 - (p.life - p.maxLife + 1));
+          const opacity = fadeIn * fadeOut;
+
+          dummy.position.copy(p.pos);
+          dummy.quaternion.copy(camera.quaternion);
+          dummy.rotateZ(p.rot);
+          const s = p.scale * opacity;
+          dummy.scale.set(s, s * PLANE_ASPECT, s);
+          dummy.updateMatrix();
+          mesh.setMatrixAt(i, dummy.matrix);
+          continue;
+        }
+      }
+
+      dummy.position.set(0, -999, 0);
+      dummy.scale.set(0, 0, 0);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  });
+
+  if (textures.length === 0) return null;
+
+  return (
+    <instancedMesh
+      ref={meshRef}
+      args={[undefined, undefined, FLY_POOL]}
+      frustumCulled={false}
+    >
+      <planeGeometry args={[1, 1]} />
+      <meshBasicMaterial
+        map={textures[0]}
+        transparent
+        alphaTest={0.05}
+        side={THREE.DoubleSide}
+        depthWrite={false}
+      />
+    </instancedMesh>
+  );
+}
+
 export default function FlowerGlobe({ params }: FlowerGlobeProps) {
   const textures = useFlowerTextures(params);
   const grassTextures = useGrassTextures();
@@ -388,6 +538,12 @@ export default function FlowerGlobe({ params }: FlowerGlobeProps) {
             />
           )
       )}
+
+      <FlyingPetals
+        textures={textures}
+        flowers={flowers}
+        bloomRef={bloomRef}
+      />
     </group>
   );
 }
