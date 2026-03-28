@@ -2,7 +2,9 @@ import OpenAI from "openai";
 import { FlowerGenerationParams, FlowerVariation } from "@/types/flowers";
 import { hashString } from "./seededRng";
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function getClient() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+}
 
 const SYSTEM_PROMPT = `You are a botanical artist AI that translates natural language descriptions into mathematical parameters for procedural flower generation. You output structured JSON that drives a polar rose equation renderer.
 
@@ -106,7 +108,7 @@ const RESPONSE_SCHEMA = {
 export async function generateFlowerParams(
   prompt: string
 ): Promise<FlowerGenerationParams> {
-  const response = await client.responses.create({
+  const response = await getClient().responses.create({
     model: "gpt-4o",
     input: [
       { role: "system", content: SYSTEM_PROMPT },
