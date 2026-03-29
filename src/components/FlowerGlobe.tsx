@@ -14,7 +14,7 @@ const FLOWER_COUNT = 900;
 const GRASS_COUNT = 3000;
 const BLOOM_SPEED = 0.6;
 const PLANE_ASPECT = 1.5;
-const FLOWER_SCALE_MULT = 2.8;
+const FLOWER_SCALE_MULT = 3.2;
 const GRASS_VARIANTS = 5;
 
 const FLY_POOL = 80;
@@ -30,17 +30,21 @@ function useFlowerTextures(params: FlowerGenerationParams) {
   const [textures, setTextures] = useState<THREE.CanvasTexture[]>([]);
 
   useEffect(() => {
-    const canvases = generateAllTextures(params.variations, params.seed);
-    const threeTextures = canvases.map((canvas) => {
-      const tex = new THREE.CanvasTexture(canvas);
-      tex.needsUpdate = true;
-      return tex;
-    });
-    setTextures(threeTextures);
+    try {
+      const canvases = generateAllTextures(params.variations, params.seed);
+      const threeTextures = canvases.map((canvas) => {
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.needsUpdate = true;
+        return tex;
+      });
+      setTextures(threeTextures);
 
-    return () => {
-      threeTextures.forEach((t) => t.dispose());
-    };
+      return () => {
+        threeTextures.forEach((t) => t.dispose());
+      };
+    } catch (err) {
+      console.error("Flower texture generation failed:", err);
+    }
   }, [params.variations, params.seed]);
 
   return textures;
@@ -497,8 +501,6 @@ export default function FlowerGlobe({ params }: FlowerGlobeProps) {
     return groups;
   }, [grasses]);
 
-  if (textures.length === 0) return null;
-
   return (
     <group>
       <GlobeGlow radius={GLOBE_RADIUS + 0.15} />
@@ -506,9 +508,9 @@ export default function FlowerGlobe({ params }: FlowerGlobeProps) {
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS - 0.02, 64, 64]} />
         <meshStandardMaterial
-          color="#5a9040"
-          roughness={0.9}
-          metalness={0}
+          color="#E5D8C8"
+          roughness={0.88}
+          metalness={0.0}
         />
       </mesh>
 
