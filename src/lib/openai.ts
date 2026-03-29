@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { FlowerGenerationParams, FlowerVariation } from "@/types/flowers";
+import { FlowerGenerationParams, FlowerVariation, SceneColors } from "@/types/flowers";
 import { hashString } from "./seededRng";
 
 function getClient() {
@@ -33,7 +33,21 @@ Create 6-10 distinct flower variations that match the user's description. Consid
 
 groundTint should be a green-ish hex reflecting the mood (darker for moody, brighter for cheerful).
 bloomIntensity (0.3-1.2) controls glow strength.
-mood is a one-word summary.`;
+mood is a one-word summary.
+
+sceneColors controls the entire environment to match the prompt's mood and flower palette:
+- stemColor: hex for the main stem stroke (typically a green, but could be brown/dark for dry/autumn, pale for winter, vibrant for tropical)
+- stemColorDark: hex for the darker stem gradient end
+- leafColor: hex for the leaves along stems
+- grassBaseColor: hex for grass root color (darker, earthier)
+- grassTipColor: hex for grass blade tips (lighter, brighter)
+- sphereColor: hex for the ground sphere (earthy green for meadows, sandy for desert, dark for night, snowy white for winter, etc.)
+- bgColor: hex for the page/scene background (should complement flowers — warm whites for sun, dark blues for night, misty greys for fog, etc.)
+- lightColor: hex for the key directional light (warm yellow for sunny, cool blue for moonlit, orange for sunset, etc.)
+- lightIntensity: (0.5-2.0) overall light brightness
+
+Make these colors strongly reflect the prompt. A "cherry blossom in spring rain" should have soft pinks, muted greens, cool grey sky. A "sunflower field at sunset" should have warm oranges, golden light, rich earth tones. A "dark gothic roses" should have near-black greens, deep reds, moody purple-grey background.`;
+
 
 const VARIATION_SCHEMA = {
   type: "object" as const,
@@ -88,6 +102,27 @@ const VARIATION_SCHEMA = {
   additionalProperties: false,
 };
 
+const SCENE_COLORS_SCHEMA = {
+  type: "object" as const,
+  properties: {
+    stemColor: { type: "string" as const },
+    stemColorDark: { type: "string" as const },
+    leafColor: { type: "string" as const },
+    grassBaseColor: { type: "string" as const },
+    grassTipColor: { type: "string" as const },
+    sphereColor: { type: "string" as const },
+    bgColor: { type: "string" as const },
+    lightColor: { type: "string" as const },
+    lightIntensity: { type: "number" as const },
+  },
+  required: [
+    "stemColor", "stemColorDark", "leafColor",
+    "grassBaseColor", "grassTipColor", "sphereColor",
+    "bgColor", "lightColor", "lightIntensity",
+  ] as const,
+  additionalProperties: false,
+};
+
 const RESPONSE_SCHEMA = {
   type: "object" as const,
   properties: {
@@ -100,8 +135,9 @@ const RESPONSE_SCHEMA = {
     groundTint: { type: "string" as const },
     bloomIntensity: { type: "number" as const },
     mood: { type: "string" as const },
+    sceneColors: SCENE_COLORS_SCHEMA,
   },
-  required: ["variations", "groundTint", "bloomIntensity", "mood"] as const,
+  required: ["variations", "groundTint", "bloomIntensity", "mood", "sceneColors"] as const,
   additionalProperties: false,
 };
 
@@ -133,6 +169,7 @@ export async function generateFlowerParams(
     groundTint: string;
     bloomIntensity: number;
     mood: string;
+    sceneColors: SceneColors;
   };
 
   return {

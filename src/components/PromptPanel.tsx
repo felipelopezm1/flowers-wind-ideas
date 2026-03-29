@@ -10,6 +10,7 @@ interface PromptPanelProps {
   currentPrompt: string;
   seed: number;
   onToggleHistory: () => void;
+  hidden?: boolean;
 }
 
 export default function PromptPanel({
@@ -18,11 +19,17 @@ export default function PromptPanel({
   currentPrompt,
   seed,
   onToggleHistory,
+  hidden = false,
 }: PromptPanelProps) {
+  const [isMounted, setIsMounted] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [copied, setCopied] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!panelRef.current) return;
@@ -65,16 +72,21 @@ export default function PromptPanel({
     }
   }, [currentPrompt, seed]);
 
+  if (!isMounted) return null;
+
   return (
     <div
       ref={panelRef}
-      className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 opacity-0"
+      className={`fixed bottom-5 left-1/2 z-50 w-full max-w-md -translate-x-1/2 px-4 opacity-0 transition-all duration-300 ${
+        hidden
+          ? "pointer-events-none translate-y-10 md:pointer-events-auto md:translate-y-0 md:opacity-100"
+          : ""
+      }`}
     >
       <form
         ref={formRef}
         onSubmit={handleSubmit}
-        className="flex items-center gap-3 bg-zinc-900/90 backdrop-blur-xl rounded-2xl px-5 py-3.5 shadow-2xl border border-white/[0.06]"
-        style={{ minWidth: "380px", maxWidth: "560px" }}
+        className="flex items-center gap-2 bg-zinc-900/85 backdrop-blur-xl rounded-xl px-3.5 py-2.5 shadow-2xl border border-white/[0.06]"
       >
         <input
           type="text"
@@ -82,12 +94,12 @@ export default function PromptPanel({
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="Describe your flowers..."
           disabled={isLoading}
-          className="flex-1 bg-transparent text-white/90 placeholder-white/30 text-sm outline-none font-light tracking-wide min-w-0"
+          className="flex-1 bg-transparent text-white/90 placeholder-white/30 text-xs outline-none font-light tracking-wide min-w-0"
         />
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           {isLoading && (
-            <span className="text-[10px] text-white/30 font-light tracking-wider animate-pulse">
+            <span className="text-[9px] text-white/30 font-light tracking-wider animate-pulse">
               blooming
             </span>
           )}
@@ -97,7 +109,7 @@ export default function PromptPanel({
               <button
                 type="button"
                 onClick={handleShare}
-                className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/10 transition-all duration-200 shrink-0"
+                className="flex items-center justify-center w-7 h-7 rounded-md hover:bg-white/10 transition-all duration-200 shrink-0"
                 title="Copy share link"
               >
                 {copied ? (
@@ -137,7 +149,7 @@ export default function PromptPanel({
               <button
                 type="button"
                 onClick={onToggleHistory}
-                className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/10 transition-all duration-200 shrink-0"
+                className="flex items-center justify-center w-7 h-7 rounded-md hover:bg-white/10 transition-all duration-200 shrink-0"
                 title="History"
               >
                 <svg
@@ -157,7 +169,7 @@ export default function PromptPanel({
           <button
             type="submit"
             disabled={isLoading || !prompt.trim()}
-            className="flex items-center justify-center w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:hover:bg-white/10 transition-all duration-200 shrink-0"
+            className="flex items-center justify-center w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:hover:bg-white/10 transition-all duration-200 shrink-0"
           >
             {isLoading ? (
               <svg
@@ -200,7 +212,7 @@ export default function PromptPanel({
         </div>
       </form>
 
-      <p className="text-center text-white/15 text-[10px] mt-2.5 font-light tracking-[0.2em] uppercase select-none">
+      <p className="text-center text-white/12 text-[9px] mt-2 font-light tracking-[0.2em] uppercase select-none">
         Flower Wind
       </p>
     </div>

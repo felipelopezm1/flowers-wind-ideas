@@ -127,4 +127,15 @@ export const DEFAULT_PARAMS: FlowerGenerationParams = {
   groundTint: "#2D5016",
   bloomIntensity: 0.8,
   mood: "vibrant",
+  sceneColors: {
+    stemColor: "#4a7a34",
+    stemColorDark: "#2e5520",
+    leafColor: "#4a8a30",
+    grassBaseColor: "#3d6b2a",
+    grassTipColor: "#6aad48",
+    sphereColor: "#5a8a3c",
+    bgColor: "#FAFAF8",
+    lightColor: "#FFFDE8",
+    lightIntensity: 1.1,
+  },
 };
